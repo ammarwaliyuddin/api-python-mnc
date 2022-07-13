@@ -1,6 +1,5 @@
 #custom
-services/__pycache__/
-report/__pycache__/
+__pycache__/
 grafik/
 
 # Node artifact files
