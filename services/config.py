@@ -12,7 +12,7 @@ cursor = db.cursor()
 
 dbo = cx_Oracle.connect("ADMINDWS/test1ng@172.18.11.18:1521/POWERBI")
 cursor = dbo.cursor()
-print("Succesfully connect")
+print("Connected")
 
 def base64_decode(data):
   base64_string = data
@@ -21,3 +21,8 @@ def base64_decode(data):
   sample_string_bytes = base64.b64decode(base64_bytes)
   sample_string = sample_string_bytes.decode("ascii")
   return sample_string
+
+def clrDataMonth(data):
+  if len(data) == 1 :
+    return '0'+data
+  return data

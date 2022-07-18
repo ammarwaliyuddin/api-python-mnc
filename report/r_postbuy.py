@@ -18,26 +18,21 @@ warnings.filterwarnings("ignore")
 
 def postbuy(data):
 
-    advertiser = data['advertiser']
-    print(advertiser)
+    print(data)
     ### FILTERING
+    periodenya = "'"+ data['year'] +"-" + config.clrDataMonth(data['month']) +"'"  #year-month
+    advertisernya = data['advertiser']
+    po_no_nya = "'"+ config.base64_decode(data['no_po']) +"'"
+    type_ordernya = data['type_order'] 
+    
     sql_adv = """SELECT a.nama_adv FROM db_m_advertiser a
-    WHERE a.id_adv =3718"""
+    WHERE a.id_adv = """ + advertisernya + """ """
     adv = pd.read_sql(sql_adv,config.db)
+
     ora_periode = """SELECT DISTINCT to_char(a.AIR_DATE,'MONTH YYYY') PERIOD FROM DB_GEN21_CLEAN_DETAIL a
-    where to_char(a.AIR_DATE,'YYYY-MM') = '2021-11'"""
+    where to_char(a.AIR_DATE,'YYYY-MM') = """+periodenya+""" """
     periode = pd.read_sql(ora_periode,config.dbo)
-
-
-    # periodenya = "and d.staff='"+emailsalesRecevier+"'"
-    periodenya = "to_char(a.AIR_DATE,'YYYY-MM') = '2021-11'"
-    advertisernya = "a.ID_adv = 3718"
-    po_no_nya = "a.PO_NO='22785/MO/INEWS/XII/2021/2601'"
-    type_ordernya = "MEDIA PLAN"
-
-    po_nof=po_no_nya[9:-1]
-
-
+    
     ### periode
     rand = random.randint(0,100)
     print(rand)
@@ -45,7 +40,8 @@ def postbuy(data):
 
     ## ambil data sam 1
     ora1 ="""SELECT to_char(a.AIR_DATE,'DD') tanggal, a.DAYPART_V1 DAYPART, to_char(a.AIR_DATE,'DAY') DAY, a.FLAG_RATE, a.DUR, a.NETT, a.TVR FROM DB_GEN21_CLEAN_DETAIL a
-    where """ + periodenya + """ AND """ + advertisernya + """ AND """+po_no_nya+""" """
+    where to_char(a.AIR_DATE,'YYYY-MM') = """ + periodenya + """ AND a.ID_adv = """ + advertisernya + """ AND a.PO_NO = """+po_no_nya+""" """
+    
     data1 = pd.read_sql(ora1, config.dbo)
     # print(data1)
     intra1 ="""SELECT * FROM dim_spot30"""
@@ -62,11 +58,12 @@ def postbuy(data):
     merged1 =  pd.merge(data1, dim_spot, left_on="DUR", right_on="duration", how="left")
     merged1 =  pd.merge(merged1, dim_type, left_on="FLAG_RATE", right_on="code_kombinasi_flagrate", how="left")
     merged1["grp"]=merged1["TVR"]*merged1["spot_30"]
+   
+    # print(merged1['keyOrder'] == type_ordernya)
 
     merged1 = merged1.loc[(merged1['keyOrder'] == type_ordernya)]
     grafik = merged1.groupby('TANGGAL').agg({'spot_30': ['sum'],'grp':['sum']}).reset_index()
     grafik.columns = ['date', 'spot', 'grp']
-
     # plot grafik
     fig,ax= plt.subplots(1,1,figsize=(9,5))
     ax.plot(grafik.date, grafik.spot, label="SPOT",marker="o")
@@ -77,10 +74,12 @@ def postbuy(data):
     fig = ax.get_figure()
     fig.savefig('grafik/grpdaily.png', bbox_inches='tight')
     # plt.show()
+    plt.close()
 
     grafik2 = merged1.groupby(['DAYPART','DAY']).agg({'grp': ['sum']}).reset_index()
     grafik2.columns = ['daypart', 'day', 'grp']
     grafik2['day'] = grafik2['day'].str.strip()
+    hari = grafik2['day'].unique()
     day = pd.DataFrame({
     'days': ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY','SUNDAY'],
     'days_num': [1, 2, 3, 4, 5, 6, 7]
@@ -103,7 +102,9 @@ def postbuy(data):
     rcParams['figure.figsize'] = 9,5
     ax = sns.heatmap(grafik2, linewidths=.5, cmap="YlGnBu", annot=True, fmt='.2f', cbar=False)
     # Show all ticks and label them with the respective list entries
-    ax.set_xticklabels(day.days, rotation=0)
+    print(ax)
+    # ax.set_xticklabels(day.days, rotation=0)
+    ax.set_xticklabels(hari, rotation=0)
     ax.set_yticklabels(uniqueValues, rotation=90)
 
     plt.xlabel("")
@@ -111,11 +112,12 @@ def postbuy(data):
     fig = ax.get_figure()
     fig.savefig('grafik/daypart.png', bbox_inches='tight')
     # plt.show()
+    plt.close()
 
 
     ### TABLE 1
     ora2 ="""SELECT a.ID_BRAND,a.FLAG_RATE, a.ID_CHANNEL, CONCAT(a.ID_CHANNEL,CONCAT('|', a.CODE_BANNER)) AS KEY, a.DUR, a.NETT, a.TVR FROM DB_GEN21_CLEAN_DETAIL a
-    where  """ + periodenya + """ AND """ + advertisernya + """ AND """+ po_no_nya +""" """
+    where  to_char(a.AIR_DATE,'YYYY-MM') = """ + periodenya + """ AND a.ID_adv = """ + advertisernya + """ AND a.PO_NO = """+ po_no_nya +""" """
 
     data2 = pd.read_sql(ora2,config.dbo)
 
@@ -247,7 +249,7 @@ def postbuy(data):
 
     print("sampai sini")
     orantc ="""SELECT a.FLAG_RATE, SUM(a.NETT)/1000000 NETT_NTC FROM DB_GEN21_CLEAN_DETAIL a
-            where  """ + periodenya + """ AND """ + advertisernya + """ AND """+ po_no_nya +""" AND a.KET_INVENTORY='N'
+            where  to_char(a.AIR_DATE,'YYYY-MM') = """ + periodenya + """ AND a.ID_adv = """ + advertisernya + """ AND a.PO_NO = """+ po_no_nya +""" AND a.KET_INVENTORY='N'
             GROUP BY a.FLAG_RATE"""
     data_ntc = pd.read_sql(orantc, config.dbo)
     merged_ntc = pd.merge(data_ntc, dim_type, left_on="FLAG_RATE", right_on="code_kombinasi_flagrate", how="left")
@@ -282,7 +284,7 @@ def postbuy(data):
         '<tr>' \
         '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:25%">PO NO</td>' \
         '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:5%">:</td>' \
-        '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:65%">'+po_nof+'</td>' \
+        '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:65%">'+po_no_nya+'</td>' \
         '</tr>' \
         '<tr>' \
         '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:25%">Type Order</td>' \
