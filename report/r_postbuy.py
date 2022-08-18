@@ -323,15 +323,19 @@ def postbuy(data):
 
     try:
         strFrom = 'admin.marketing@mncgroup.com'
-        to = ['khoerul.fatihin@mncgroup.com']
+        # to = ['ammar.jannah@mncgroup.com']
+        to = data['client']
+        cc = data['cc']
+        
         # to = ['jaenudin.fawwaz@mncgroup.com']
         # to = ['mujib.nashikha@mncgroup.com']
-        strTos = to
+        strTos = to+cc
 
         msgRoot = MIMEMultipart('related')
         msgRoot['Subject'] = 'Report Postbuy '+str(periode.iloc[0]['PERIOD']).title()
         msgRoot['From'] = 'Admin Mediakit'
         msgRoot['To'] = "%s\r\n" % ",".join(to)
+        msgRoot['Cc'] = "%s\r\n" % ",".join(cc)
 
         msgAlternative = MIMEMultipart('alternative')
         msgRoot.attach(msgAlternative)
