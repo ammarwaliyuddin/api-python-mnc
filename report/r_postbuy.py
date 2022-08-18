@@ -32,11 +32,11 @@ def postbuy(data):
     ora_periode = """SELECT DISTINCT to_char(a.AIR_DATE,'MONTH YYYY') PERIOD FROM DB_GEN21_CLEAN_DETAIL a
     where to_char(a.AIR_DATE,'YYYY-MM') = """+periodenya+""" """
     periode = pd.read_sql(ora_periode,config.dbo)
+    # periode = periode.iloc[index]['PERIOD'].str.strip()
+    print(periode)
     
     ### periode
     rand = random.randint(0,100)
-    print(rand)
-
 
     ## ambil data sam 1
     ora1 ="""SELECT to_char(a.AIR_DATE,'DD') tanggal, a.DAYPART_V1 DAYPART, to_char(a.AIR_DATE,'DAY') DAY, a.FLAG_RATE, a.DUR, a.NETT, a.TVR FROM DB_GEN21_CLEAN_DETAIL a
@@ -65,13 +65,21 @@ def postbuy(data):
     grafik = merged1.groupby('TANGGAL').agg({'spot_30': ['sum'],'grp':['sum']}).reset_index()
     grafik.columns = ['date', 'spot', 'grp']
     # plot grafik
-    fig,ax= plt.subplots(1,1,figsize=(9,5))
+    fig,ax= plt.subplots(1,1,figsize=(9,4))
     ax.plot(grafik.date, grafik.spot, label="SPOT",marker="o")
-    ax.plot(grafik.date, grafik.grp, label="GRP",marker="o")
-    # ax.set_xticklabels(grafik.date, rotation = 45)
+    lns1= ax.plot(grafik.date, grafik.spot, color="brown", label="SPOT",marker="o")
+    ax.set_ylabel("SPOT", color="brown", fontsize=14)
+    # twin object for two different y-axis on the sample plot
+    ax2=ax.twinx()
+    # make a plot with different y-axis using second axis object
+    lns2= ax2.plot(grafik.date, grafik.grp, color="blue", label="GRP",marker="o")
+    ax2.set_ylabel("GRP",color="blue",fontsize=14)
+    # plt.show()
     plt.title("GRP Daily", loc="center", color="blue", weight="bold", pad=15, fontsize=16)
-    plt.legend()
-    fig = ax.get_figure()
+    lns = lns1+lns2
+    labs = [l.get_label() for l in lns]
+    ax.legend(lns, labs, loc=0)
+    fig = ax2.get_figure()
     fig.savefig('grafik/grpdaily.png', bbox_inches='tight')
     # plt.show()
     plt.close()
@@ -79,7 +87,6 @@ def postbuy(data):
     grafik2 = merged1.groupby(['DAYPART','DAY']).agg({'grp': ['sum']}).reset_index()
     grafik2.columns = ['daypart', 'day', 'grp']
     grafik2['day'] = grafik2['day'].str.strip()
-    hari = grafik2['day'].unique()
     day = pd.DataFrame({
     'days': ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY','SUNDAY'],
     'days_num': [1, 2, 3, 4, 5, 6, 7]
@@ -87,24 +94,26 @@ def postbuy(data):
     day['days'] = day['days'].str.strip()
 
     daypart = pd.DataFrame({
-    'dayparts': ['NPT(06-18)', 'PT(18-22)', 'NPT(22-24)'],
-    'dayparts_num': [1, 2, 3]
+    'dayparts': ['NPT(00-06)','NPT(06-18)', 'PT(18-22)', 'NPT(22-24)'],
+    'dayparts_num': [1, 2, 3, 4]
     })
 
 
     grafik2 = pd.merge(grafik2, day, left_on="day", right_on="days", how="left")
     grafik2 = pd.merge(grafik2, daypart, left_on="daypart", right_on="dayparts", how="left")
+    
+    grafik2 = grafik2.sort_values(['dayparts_num', 'days_num'], ascending=[True, True])
     uniqueValues = grafik2['dayparts'].unique()
-    # grafik2 = grafik2.sort_values(by='days_num', ascending=True)
-
+    uniqueday = grafik2['day'].unique()
 
     grafik2 = grafik2.pivot(index="dayparts_num", columns="days_num", values="grp")
-    rcParams['figure.figsize'] = 9,5
+    lebar = len(grafik2)
+    rcParams['figure.figsize'] = 9, 1.2*lebar
     ax = sns.heatmap(grafik2, linewidths=.5, cmap="YlGnBu", annot=True, fmt='.2f', cbar=False)
     # Show all ticks and label them with the respective list entries
-    print(ax)
+
     # ax.set_xticklabels(day.days, rotation=0)
-    ax.set_xticklabels(hari, rotation=0)
+    ax.set_xticklabels(uniqueday, rotation=0)
     ax.set_yticklabels(uniqueValues, rotation=90)
 
     plt.xlabel("")
@@ -261,17 +270,17 @@ def postbuy(data):
     tableSummary1 ='<table class="data-table textsmall bg-tbl" style="font-family: Arial, Helvetica, sans-serif; border-collapse: collapse; width: 100%">' \
         '<thead class="bg-tbl-header text-tbl-header">' \
         '<tr>' \
-        '<th style="text-align: center;background-color: #2c4259;color: white; border: 1px solid #ddd; padding: 12px 8px;">NETT</th>' \
-        '<th style="text-align: center;background-color: #2c4259;color: white; border: 1px solid #ddd; padding: 12px 8px;">NETT NTC</th>' \
-        '<th style="text-align: center;background-color: #2c4259;color: white; border: 1px solid #ddd; padding: 12px 8px;">GRP</th>' \
-        '<th style="text-align: center;background-color: #2c4259;color: white; border: 1px solid #ddd; padding: 12px 8px;">LVL CPRP</th>' \
+        '<th style="text-align: center;background-color: #2c4259;color: white; border: 1px solid #ddd; height: 27px; padding: 12px 8px;">NETT</th>' \
+        '<th style="text-align: center;background-color: #2c4259;color: white; border: 1px solid #ddd; height: 27px; padding: 12px 8px;">NETT NTC</th>' \
+        '<th style="text-align: center;background-color: #2c4259;color: white; border: 1px solid #ddd; height: 27px; padding: 12px 8px;">GRP</th>' \
+        '<th style="text-align: center;background-color: #2c4259;color: white; border: 1px solid #ddd; height: 27px; padding: 12px 8px;">LVL CPRP</th>' \
         '</tr>' \
         '</thead>' \
         '<tbody>'\
-        '<td style="text-align: center; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px solid  #ddd; width:25%">'+str("{:.0f}".format(nett_total))+'</td>' \
-        '<td style="text-align: center; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px solid  #ddd; width:25%">'+str("{:.0f}".format(ntc_total))+'</td>' \
-        '<td style="text-align: center; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px solid #ddd; width:25%">'+str("{:.0f}".format(grp_total))+'</td>' \
-        '<td style="text-align: center; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px solid #ddd; width:25%">'+str("{:.0f}".format(cprp_total))+'</td>' \
+        '<td style="text-align: center; background-color:white; color: #2c4259; font-size: 18px;font-weight:bold; height: 27px; border: 1px solid  #ddd; width:25%">'+str("{:.0f}".format(nett_total))+'</td>' \
+        '<td style="text-align: center; background-color:white; color: #2c4259; font-size: 18px;font-weight:bold; height: 27px; border: 1px solid  #ddd; width:25%">'+str("{:.0f}".format(ntc_total))+'</td>' \
+        '<td style="text-align: center; background-color:white; color: #2c4259; font-size: 18px;font-weight:bold; height: 27px; border: 1px solid #ddd; width:25%">'+str("{:.0f}".format(grp_total))+'</td>' \
+        '<td style="text-align: center; background-color:white; color: #2c4259; font-size: 18px;font-weight:bold; height: 27px; border: 1px solid #ddd; width:25%">'+str("{:.0f}".format(cprp_total))+'</td>' \
         '</tbody></table>'
 
     tableHeader ='<table class="data-table textsmall bg-tbl" style="font-family: Arial, Helvetica, sans-serif; border-collapse: collapse; width: 100%">' \
@@ -284,10 +293,10 @@ def postbuy(data):
         '<tr>' \
         '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:25%">PO NO</td>' \
         '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:5%">:</td>' \
-        '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:65%">'+po_no_nya+'</td>' \
+        '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:65%">'+po_no_nya[1:-1]+'</td>' \
         '</tr>' \
         '<tr>' \
-        '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:25%">Type Order</td>' \
+        '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:25%">Tipe Order</td>' \
         '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:5%">:</td>' \
         '<td style="text-align: left; background-color:white; color: #2c4259; font-size: 14px;font-weight:bold; border: 1px; width:65%">'+type_ordernya+'</td>' \
         '</tr>' \
@@ -314,13 +323,13 @@ def postbuy(data):
 
     try:
         strFrom = 'admin.marketing@mncgroup.com'
-        to = ['ammar.jannah@mncgroup.com']
+        to = ['khoerul.fatihin@mncgroup.com']
         # to = ['jaenudin.fawwaz@mncgroup.com']
         # to = ['mujib.nashikha@mncgroup.com']
         strTos = to
 
         msgRoot = MIMEMultipart('related')
-        msgRoot['Subject'] = 'Report Postbuy '+str(periode.iloc[index]['PERIOD']).title()
+        msgRoot['Subject'] = 'Report Postbuy '+str(periode.iloc[0]['PERIOD']).title()
         msgRoot['From'] = 'Admin Mediakit'
         msgRoot['To'] = "%s\r\n" % ",".join(to)
 
@@ -342,7 +351,7 @@ def postbuy(data):
                 <tbody><tr><td class="m_2408168722463005219td" bgcolor="#ffffff" style="width:650px;min-width:650px;font-size:0pt;line-height:0pt;padding:0;margin:0;font-weight:normal">
                 <table width="100%" height="7px" border="0" cellspacing="0" cellpadding="0" bgcolor="#d8e0e3">
                 <tbody><tr>
-                <td bgcolor="#ffb700" width="30%" class="m_2408168722463005219bg-gradient"></td>
+                <td bgcolor="#186997" width="30%" class="m_2408168722463005219bg-gradient"></td>
                 <td class="m_2408168722463005219td" bgcolor="#203C6A" width="70%"></td>
                 </tr>
                 </tbody></table>
@@ -366,7 +375,7 @@ def postbuy(data):
                 Hai, """+salesRecevier+"""
                 </td>
                 </tr>
-                
+                <br>
                 <tr><td class="header" style="font-size:14px;line-height:10px;color:#404852;padding: 6px;border: 2px solid #1f497d; margin: 5px;">
                 <h4 class="m_2408168722463005219pt36 m_2408168722463005219fz-18" style="color:#1f497d;text-align:center;font-weight:bold;font-size:18px;line-height:1;margin-bottom:8px;">
                 REPORT POSTBUY
@@ -394,7 +403,7 @@ def postbuy(data):
                 <img src="cid:image"""+str(rand)+"""grp" alt="" style="padding:30px 0px"></td></tr>
                 
                 <tr><td class="m_2408168722463005219footer m_2408168722463005219center m_2408168722463005219pb8" style="font-size:14px;line-height:20px;color:#404852;padding:20px 0px 20px 0px;">
-                <b style="color:#1f497d">Berikut GRP berdasrkan Day x Daypart, periode """+ str(periode.iloc[index]['PERIOD']).title() +""":</b>
+                <b style="color:#1f497d">Berikut GRP berdasarkan Day x Daypart, periode """+ str(periode.iloc[index]['PERIOD']).title() +""":</b>
                 </td></tr>
             
                 <tr><td class="m_2408168722463005219pt36 m_2408168722463005219fz-18" style="color:#1f497d;text-align:center;font-weight:bold;font-size:22px;line-height:1;">
@@ -433,7 +442,7 @@ def postbuy(data):
             
             
                 <tr><td style="font-size:14px;line-height:1.5;color:#404852;padding:20px 0px">
-                <p style="text-align:justify">
+                <p style="text-align:center;">
                 Jika report diatas tidak sesuai mohon bisa menghubungi Sales PIC masing-masing.
                 </p>
                 </td>
@@ -446,61 +455,18 @@ def postbuy(data):
                 </p>
                 </td>
                 </tr>
-                <td style="border-bottom:2px solid #dedede;padding:20px 0px">
-                </td>
-                </tr>
-                <tr>
-                <td>
-                <table width="100%" border="0" cellspacing="0" cellpadding="0" bgcolor="#ffffff">
-                <tbody><tr>
-                <td width="30%">
-                </td>
-                <td class="m_2408168722463005219pb8" width="70%" style="font-size:14px;line-height:1.5;color:#404852;padding:20px 0 0 20px">
-                <div style="padding:30px 0 15px;font-size:18px">
-                <b style="color:#203c6a">Care Center
-                </b>
-                - Melayani dengan sepenuh hati
-                </div>
-                <table>
-                <tbody>
-                <tr>
-                <td style="padding-bottom:10px;padding-right:5px">
-                <img src="cid:image_mail" alt="">
-                </td>
-                <td style="font-size:13px;padding-bottom:10px;padding-right:5px">
-                systemanalyst.msi@mncgroup.com
-                </td>
-                </tr>
-                <tr>
-                <td style="padding-bottom:10px;padding-right:5px">
-                <img src="cid:image_loc" alt="">
-                </td>
-                <td style="font-size:13px;padding-right:5px">
-                <b>DMA - System Analyst
-                </b>
-                </td>
-                </tr>
-                <tr>
-                <td></td>
-                <td style="font-size:10px">
-                <p>
-                MNC Studios Tower 1 Lt. 10, <br/>
-                Kebon Jeruk, Jakarta Barat
-                </p>
-                </td>
-                </tr>
-                </tbody></table>
-                </td>
-                </tr>
-                </tbody></table>
-                </td>
-                </tr>
+
                 </tbody></table>
                 </td>
                 </tr></tbody></table>
                 </td>
                 </tr></tbody></table>
                 </td>
+                <tr>
+                    <td style="background-color:#186997;">
+                        <img src="cid:image_footer" style="max-width:100%" alt="">
+                    </td>                            
+                </tr>
                 </tr></tbody></table>
                 </td>
                 </tr></tbody></table>
@@ -514,18 +480,6 @@ def postbuy(data):
         msgImage1 = MIMEImage(fp1.read())
         fp1.close()
 
-        fp2 = open('images/mail.png', 'rb')
-        msgImage2 = MIMEImage(fp2.read())
-        fp2.close()
-
-        fp3 = open('images/loc.png', 'rb')
-        msgImage3 = MIMEImage(fp3.read())
-        fp3.close()
-
-        fp4 = open('images/ext.png', 'rb')
-        msgImage4 = MIMEImage(fp4.read())
-        fp4.close()
-
         fp5 = open('grafik/grpdaily.png', 'rb')
         msgImage5 = MIMEImage(fp5.read())
         fp5.close()
@@ -534,19 +488,19 @@ def postbuy(data):
         msgImage6 = MIMEImage(fp6.read())
         fp6.close()
 
+        fp11 = open('images/foot_fix.png', 'rb')
+        msgImage11 = MIMEImage(fp11.read())
+        fp11.close()
+
 
         msgImage1.add_header('Content-ID', '<image_logo>')
         msgRoot.attach(msgImage1)
-        msgImage2.add_header('Content-ID', '<image_mail>')
-        msgRoot.attach(msgImage2)
-        msgImage3.add_header('Content-ID', '<image_loc>')
-        msgRoot.attach(msgImage3)
-        msgImage4.add_header('Content-ID', '<image_ext>')
-        msgRoot.attach(msgImage4)
         msgImage5.add_header('Content-ID', '<image'+str(rand)+'grp>')
         msgRoot.attach(msgImage5)
         msgImage6.add_header('Content-ID', '<image'+str(rand)+'daypart>')
         msgRoot.attach(msgImage6)
+        msgImage11.add_header('Content-ID', '<image_footer>')
+        msgRoot.attach(msgImage11)
 
 
         smtp = smtplib.SMTP()
